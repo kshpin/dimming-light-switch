@@ -31,10 +31,17 @@ RUN apt-get update && apt-get install -y \
     bash \
     && rm -rf /var/lib/apt/lists/*
 
-# ---- non-root user ----
-RUN groupadd --gid ${USER_GID} ${USERNAME} \
+# Add udev rule for ESP32 devices
+RUN echo 'KERNEL=="ttyACM*", MODE="0666", GROUP="dialout"' > /etc/udev/rules.d/99-esp32.rules && \
+    echo 'KERNEL=="ttyUSB*", MODE="0666", GROUP="dialout"' >> /etc/udev/rules.d/99-esp32.rules
+
+# ---- non-root user with sudo support ----
+RUN apt-get update && apt-get install -y sudo \
+    && groupadd --gid ${USER_GID} ${USERNAME} \
     && useradd --uid ${USER_UID} --gid ${USER_GID} -m ${USERNAME} \
-    && usermod -aG dialout ${USERNAME}
+    && usermod -aG dialout ${USERNAME} \
+    && usermod -aG sudo ${USERNAME} \
+    && echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
 # Create ESP-IDF directory and set ownership before switching to non-root user
 RUN mkdir -p ${IDF_PATH} && chown -R ${USERNAME}:${USERNAME} ${IDF_PATH}
@@ -51,5 +58,3 @@ RUN ${IDF_PATH}/tools/idf_tools.py install --targets esp32c6 \
 
 # Make ESP-IDF environment available in shells
 RUN echo ". ${IDF_PATH}/export.sh" >> ~/.bashrc
-
-CMD ["/bin/bash"]

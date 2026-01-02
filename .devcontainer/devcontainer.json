@@ -1,9 +1,9 @@
 {
   "name": "ESP32-C6 ESP-IDF",
-  "build": {
-    "dockerfile": "Dockerfile"
-  },
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "devcontainer",
   "workspaceFolder": "/workspaces/dimming-light-switch",
+  "postCreateCommand": "sudo chmod 666 /dev/ttyACM* /dev/ttyUSB* 2>/dev/null || true",
   "remoteUser": "vscode",
   "customizations": {
     "vscode": {

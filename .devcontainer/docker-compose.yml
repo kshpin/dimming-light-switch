@@ -1,0 +1,12 @@
+services:
+  devcontainer:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    privileged: true
+    volumes:
+      - ..:/workspaces/dimming-light-switch:cached
+      - /dev:/dev
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+    command: sleep infinity
