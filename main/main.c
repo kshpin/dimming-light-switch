@@ -1,7 +1,7 @@
 #include "led_control.h"
 #include "button.h"
 
-#define BUTTON_ON_OFF_GPIO  GPIO_NUM_10
+#define BUTTON_ON_OFF_GPIO  GPIO_NUM_2
 
 static void on_off_button_pressed(void)
 {

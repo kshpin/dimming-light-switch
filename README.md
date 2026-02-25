@@ -28,8 +28,8 @@ All pins chosen to avoid strapping pins and USB pins on the ESP32-C6:
 | GPIO | Function | Notes |
 |------|----------|-------|
 | 6 | PWM output to SparkFun board CTL pin | LEDC channel 0 |
-| 9 | Zigbee network button | Active-low, internal pull-up; BOOT button on most devkits |
-| 10 | Manual on/off toggle button | Active-low, internal pull-up |
+| 23 | Zigbee network button | Active-low, internal pull-up; BOOT button on most devkits |
+| 2 | Manual on/off toggle button | Active-low, internal pull-up |
 
 ### 2.3 Wiring: SparkFun COM-23979 Board
 
