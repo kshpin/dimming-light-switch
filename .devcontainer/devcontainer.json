@@ -3,7 +3,7 @@
   "dockerComposeFile": "docker-compose.yml",
   "service": "devcontainer",
   "workspaceFolder": "/workspaces/dimming-light-switch",
-  "postCreateCommand": "sudo chmod 666 /dev/ttyACM* /dev/ttyUSB* 2>/dev/null || true",
+  "postAttachCommand": "sudo chmod 666 /dev/ttyACM* /dev/ttyUSB* 2>/dev/null || true",
   "remoteUser": "vscode",
   "customizations": {
     "vscode": {
