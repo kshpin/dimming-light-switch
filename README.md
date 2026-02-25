@@ -28,7 +28,7 @@ All pins chosen to avoid strapping pins and USB pins on the ESP32-C6:
 | GPIO | Function | Notes |
 |------|----------|-------|
 | 6 | PWM output to SparkFun board CTL pin | LEDC channel 0 |
-| 23 | Zigbee network button | Active-low, internal pull-up; BOOT button on most devkits |
+| 17 | Zigbee network button | Active-low, internal pull-up; BOOT button on most devkits |
 | 2 | Manual on/off toggle button | Active-low, internal pull-up |
 
 ### 2.3 Wiring: SparkFun COM-23979 Board
@@ -161,12 +161,12 @@ bool led_get_on_off(void);                 // Current on/off state
 
 Both buttons use GPIO interrupts (falling edge) with software debounce (50ms lockout via `esp_timer`).
 
-**Zigbee network button (GPIO 9)**:
+**Zigbee network button (GPIO 17)**:
 
-- **Short press (<3s)**: Invoke `esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING)` to join an available open network.
+- **Short press (<5s)**: Invoke `esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING)` to join an available open network.
 - **Long press (>=5s)**: Call `esp_zb_factory_reset()` to leave the network and clear Zigbee state, then restart steering.
 
-**Manual on/off button (GPIO 10)**:
+**Manual on/off button (GPIO 2)**:
 
 - **Short press**: Toggle the on/off state locally. Calls `led_set_on_off(!current_state)` and also updates the Zigbee On/Off cluster attribute so the hub stays in sync via reporting.
 
@@ -249,8 +249,8 @@ flowchart LR
         OnOff[On/Off Cluster]
         Level[Level Cluster]
         LedCtrl[LED Control]
-        BtnZB[Zigbee Btn GPIO9]
-        BtnManual[Manual Btn GPIO10]
+        BtnZB[Zigbee Btn GPIO17]
+        BtnManual[Manual Btn GPIO2]
         GammaLUT[Gamma LUT]
     end
 
