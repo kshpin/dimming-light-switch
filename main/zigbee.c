@@ -1,5 +1,4 @@
 #include "zigbee.h"
-#include "led_control.h"
 #include "esp_zigbee_core.h"
 #include "esp_zigbee_secur.h"
 #include "esp_log.h"
@@ -13,6 +12,9 @@
 #define MODEL_IDENTIFIER   "\x0D""DimmableLight"
 #define STEERING_MAX_RETRIES  5
 #define STEERING_RETRY_DELAY_MS 5000
+
+static zigbee_on_off_cb_t on_off_callback;
+static zigbee_level_cb_t  level_callback;
 
 static bool steering_in_progress = false;
 static int steering_retry_count = 0;
@@ -62,13 +64,13 @@ static esp_err_t zb_attribute_handler(const esp_zb_zcl_set_attr_value_message_t 
     if (message->info.cluster == ESP_ZB_ZCL_CLUSTER_ID_ON_OFF) {
         if (message->attribute.id == ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID) {
             bool on = *(bool *)message->attribute.data.value;
-            led_set_on_off(on);
+            if (on_off_callback) on_off_callback(on);
             ESP_LOGI(TAG, "On/Off set to %s", on ? "ON" : "OFF");
         }
     } else if (message->info.cluster == ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL) {
         if (message->attribute.id == ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID) {
             uint8_t level = *(uint8_t *)message->attribute.data.value;
-            led_set_brightness(level);
+            if (level_callback) level_callback(level);
             ESP_LOGI(TAG, "Level set to %d", level);
         }
     }
@@ -241,8 +243,11 @@ static void esp_zb_task(void *pvParameters)
     esp_zb_stack_main_loop();
 }
 
-void zigbee_init(void)
+void zigbee_init(zigbee_on_off_cb_t on_off_cb, zigbee_level_cb_t level_cb)
 {
+    on_off_callback = on_off_cb;
+    level_callback  = level_cb;
+
     esp_zb_platform_config_t config = {
         .radio_config = { .radio_mode = ZB_RADIO_MODE_NATIVE },
         .host_config = { .host_connection_mode = ZB_HOST_CONNECTION_MODE_NONE },

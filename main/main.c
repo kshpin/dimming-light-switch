@@ -14,6 +14,16 @@ static void on_off_button_pressed(void)
     zigbee_on_off_updated(new_state);
 }
 
+static void on_zigbee_on_off(bool on)
+{
+    led_set_on_off(on);
+}
+
+static void on_zigbee_level(uint8_t level)
+{
+    led_set_brightness(level);
+}
+
 void app_main(void)
 {
     ESP_ERROR_CHECK(nvs_flash_init());
@@ -21,5 +31,5 @@ void app_main(void)
     button_init(BUTTON_ON_OFF_GPIO, on_off_button_pressed);
     button_init_long_press(BUTTON_ZIGBEE_GPIO, zigbee_start_steering,
                            zigbee_factory_reset, LONG_PRESS_MS);
-    zigbee_init();
+    zigbee_init(on_zigbee_on_off, on_zigbee_level);
 }
