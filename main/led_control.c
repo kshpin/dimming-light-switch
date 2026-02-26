@@ -1,6 +1,10 @@
-#include "led_control.h"
 #include <math.h>
 #include "driver/ledc.h"
+#include "esp_log.h"
+
+#include "led_control.h"
+
+#define TAG "LED_CONTROL"
 
 #define LED_GPIO          6
 #define LEDC_TIMER        LEDC_TIMER_0
@@ -28,6 +32,8 @@ static void build_gamma_lut(void)
 
 static void apply_duty(uint32_t duty)
 {
+    ESP_LOGI(TAG, "Applying duty: %lu", duty);
+
     ledc_set_duty(LEDC_SPEED_MODE, LEDC_CHANNEL, duty);
     ledc_update_duty(LEDC_SPEED_MODE, LEDC_CHANNEL);
 }
