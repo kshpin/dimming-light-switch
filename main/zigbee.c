@@ -1,6 +1,7 @@
 #include "zigbee.h"
 #include "led_control.h"
 #include "esp_zigbee_core.h"
+#include "esp_zigbee_secur.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -10,6 +11,12 @@
 #define ENDPOINT           10
 #define MANUFACTURER_NAME  "\x06""kshpin"
 #define MODEL_IDENTIFIER   "\x0D""DimmableLight"
+#define STEERING_MAX_RETRIES  5
+#define STEERING_RETRY_DELAY_MS 5000
+
+static bool steering_in_progress = false;
+static int steering_retry_count = 0;
+static void steering_cb(uint8_t param);
 
 static void configure_reporting(void)
 {
@@ -95,16 +102,26 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
     case ESP_ZB_BDB_SIGNAL_DEVICE_FIRST_START:
     case ESP_ZB_BDB_SIGNAL_DEVICE_REBOOT:
         if (err_status == ESP_OK) {
-            ESP_LOGI(TAG, "Device started up on network");
-            configure_reporting();
+            if (esp_zb_bdb_is_factory_new()) {
+                ESP_LOGI(TAG, "Factory new device, starting steering...");
+                steering_in_progress = true;
+                esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
+            } else {
+                ESP_LOGI(TAG, "Device rebooted, already on network");
+                configure_reporting();
+            }
         } else {
-            ESP_LOGW(TAG, "Not on network, starting steering...");
+            ESP_LOGW(TAG, "BDB init failed (status: %s), starting steering...",
+                     esp_err_to_name(err_status));
+            steering_in_progress = true;
             esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
         }
         break;
 
     case ESP_ZB_BDB_SIGNAL_STEERING:
+        steering_in_progress = false;
         if (err_status == ESP_OK) {
+            steering_retry_count = 0;
             esp_zb_ieee_addr_t extended_pan_id;
             esp_zb_get_extended_pan_id(extended_pan_id);
             ESP_LOGI(TAG, "Joined network (Extended PAN ID: "
@@ -117,8 +134,14 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
                      esp_zb_get_pan_id(), esp_zb_get_current_channel());
             configure_reporting();
         } else {
-            ESP_LOGW(TAG, "Network steering failed (status: %s)",
-                     esp_err_to_name(err_status));
+            steering_retry_count++;
+            ESP_LOGW(TAG, "Steering failed (attempt %d/%d), %s",
+                     steering_retry_count, STEERING_MAX_RETRIES,
+                     steering_retry_count < STEERING_MAX_RETRIES ? "retrying..." : "giving up");
+            if (steering_retry_count < STEERING_MAX_RETRIES) {
+                steering_in_progress = true;
+                esp_zb_scheduler_alarm(steering_cb, 0, STEERING_RETRY_DELAY_MS);
+            }
         }
         break;
 
@@ -137,6 +160,10 @@ static void esp_zb_task(void *pvParameters)
         .nwk_cfg.zczr_cfg.max_children = 10,
     };
     esp_zb_init(&zb_nwk_cfg);
+    esp_zb_set_primary_network_channel_set(ESP_ZB_TRANSCEIVER_ALL_CHANNELS_MASK);
+    esp_zb_set_secondary_network_channel_set(ESP_ZB_TRANSCEIVER_ALL_CHANNELS_MASK);
+    esp_zb_secur_network_min_join_lqi_set(0);
+    esp_zb_set_tx_power(20);
 
     /* Basic cluster */
     esp_zb_basic_cluster_cfg_t basic_cfg = {
@@ -222,7 +249,7 @@ void zigbee_init(void)
     };
     ESP_ERROR_CHECK(esp_zb_platform_config(&config));
 
-    xTaskCreate(esp_zb_task, "zigbee_main", 4096, NULL, 5, NULL);
+    xTaskCreate(esp_zb_task, "zigbee_main", 8192, NULL, 5, NULL);
 }
 
 void zigbee_on_off_updated(bool on)
@@ -238,7 +265,12 @@ void zigbee_on_off_updated(bool on)
 
 static void steering_cb(uint8_t param)
 {
+    if (steering_in_progress) {
+        ESP_LOGW(TAG, "Steering already in progress, ignoring request");
+        return;
+    }
     ESP_LOGI(TAG, "Starting network steering...");
+    steering_in_progress = true;
     esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
 }
 
